@@ -1,7 +1,7 @@
 using Toybox.System;
 using Toybox.Lang;
 using Toybox.Time.Gregorian;
-//using SunTimes;
+using Toybox.Application;
 
 class SunTimesCache
 {
@@ -84,11 +84,11 @@ function getLocation()
 	if (pos != null)
 	{
 		pos = pos.toDegrees();
-//		App.getApp().setProperty("location", pos); // save the location to fix a Fenix 5 bug that is loosing the location often
+		Application.getApp().setProperty("location", pos); // save the location to fix a Fenix 5 bug that is loosing the location often
 		return pos;
 	}
 	
-//	pos = App.getApp().getProperty("location"); // load the last location to fix a Fenix 5 bug that is loosing the location often
+	pos = Application.getApp().getProperty("location"); // load the last location to fix a Fenix 5 bug that is loosing the location often
 	return pos;
 }
 }

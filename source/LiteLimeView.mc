@@ -121,6 +121,12 @@ private var lastMajorRedrawTime = 0;
 		drawDailyLight(dc, sunTimes.requestData(false));
 	}
 	
+	function timeToDegree(time) 
+	{
+		var degree = ((time.hour + (time.min / 60.0)) * 15).toNumber() + 90;
+		return 360 - (degree % 360);
+	}
+	
     function drawDailyLight(dc, times) 
     {
     // up - 12 // 90
@@ -132,19 +138,16 @@ private var lastMajorRedrawTime = 0;
     		return;
 		}
     		
-    	var sunriseDegree = ((times.sunrise.hour + (times.sunrise.min / 60.0)) * 15 + 270).toNumber();
-    	var sunsetDegree = ((times.sunset.hour + (times.sunset.min / 60.0)) * 15 + 270).toNumber();
-		sunriseDegree = sunriseDegree % 360;
-    	sunsetDegree = sunsetDegree % 360;    	
+    	var sunriseDegree = timeToDegree(times.sunrise);
+    	var sunsetDegree = timeToDegree(times.sunset);
     	
     	dc.setColor(DailyLightColor, BackgroundColor);
-    	dc.setPenWidth(4);
-    	dc.drawArc(centerX, centerY, centerX - 2, Graphics.ARC_CLOCKWISE, sunsetDegree, sunriseDegree);
-    	
-    	
+    	dc.setPenWidth(6);
+    	dc.drawArc(centerX, centerY, centerX - 2, Graphics.ARC_CLOCKWISE, sunriseDegree, sunsetDegree);
+    	    	
     	// draw current time
 		var currentTime = System.getClockTime();
-    	var currentTimeDegree = ((currentTime.hour + (currentTime.min / 60.0)) * 15 + 270).toNumber();
+    	var currentTimeDegree = timeToDegree(currentTime);
     	var pi = converter.convert(currentTimeDegree, 88);
     	
     	var degreeWidth = 2.5;
@@ -153,25 +156,29 @@ private var lastMajorRedrawTime = 0;
 		var posExtR = converter.convert(currentTimeDegree + degreeWidth, 100);
 		var posIntL = converter.convert(currentTimeDegree - degreeWidth, 97);
 		var posIntR = converter.convert(currentTimeDegree + degreeWidth, 97);
-		var posIntCenter = converter.convert(currentTimeDegree, 92);
+		var posIntCenterL = converter.convert(currentTimeDegree - 0.6, 92);
+		var posIntCenterR = converter.convert(currentTimeDegree + 0.6, 92);
 		var arr =  [[posIntL.x.toNumber(), posIntL.y.toNumber()], 
 					[posExtL.x.toNumber(), posExtL.y.toNumber()], 
 					[posExtR.x.toNumber(), posExtR.y.toNumber()], 
 					[posIntR.x.toNumber(), posIntR.y.toNumber()], 
-					[posIntCenter.x.toNumber(), posIntCenter.y.toNumber()]];
+					[posIntCenterR.x.toNumber(), posIntCenterR.y.toNumber()],
+					[posIntCenterL.x.toNumber(), posIntCenterL.y.toNumber()]];
 		dc.fillPolygon(arr);
     	
-    	dc.setColor(BackgroundColor, BackgroundColor);
-    	dc.setPenWidth(2);
+    	if(currentTimeDegree < sunriseDegree + 5 && currentTimeDegree > sunsetDegree - 5)
+    	{
+    		dc.setColor(BackgroundColor, BackgroundColor);
+    		dc.setPenWidth(2);
     	
-    	var lineShift = degreeWidth + 0.5;
-    	var posLineExtL = converter.convert(currentTimeDegree - lineShift, 100);
-		var posLineExtR = converter.convert(currentTimeDegree + lineShift, 100);
-    	var posLineIntL = converter.convert(currentTimeDegree - lineShift, 95);
-		var posLineIntR = converter.convert(currentTimeDegree + lineShift, 95);
-    	dc.drawLine(posLineExtL.x, posLineExtL.y, posLineIntL.x, posLineIntL.y);
-    	dc.drawLine(posLineExtR.x, posLineExtR.y, posLineIntR.x, posLineIntR.y);
-    	
+    		var lineShift = degreeWidth + 0.5;
+    		var posLineExtL = converter.convert(currentTimeDegree - lineShift, 100);
+			var posLineExtR = converter.convert(currentTimeDegree + lineShift, 100);
+    		var posLineIntL = converter.convert(currentTimeDegree - lineShift, 94);
+			var posLineIntR = converter.convert(currentTimeDegree + lineShift, 94);
+    		dc.drawLine(posLineExtL.x, posLineExtL.y, posLineIntL.x, posLineIntL.y);
+    		dc.drawLine(posLineExtR.x, posLineExtR.y, posLineIntR.x, posLineIntR.y);
+    	}
     }
 
     function drawDailyMarks(dc) 
