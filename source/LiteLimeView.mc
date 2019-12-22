@@ -23,6 +23,8 @@ private var image = null;
 
 private const BackgroundColor = Graphics.COLOR_BLACK;
 private const DailyLightColor = Graphics.COLOR_DK_GREEN; 
+private const DailyLightColorDuskLite = 0x005500; 
+private const DailyLightColorDusk = 0x005555; 
 private const DailyMarksColor = Graphics.COLOR_WHITE;
 private const DailyHoursMarksColor = Graphics.COLOR_LT_GRAY;
 private const TimeColorMain = Graphics.COLOR_WHITE;
@@ -70,15 +72,14 @@ private var lastMajorRedrawTime = 0;
     	var timeDiff = lastMajorRedrawTime - Time.now().value();
     	if (timeDiff.abs() >= 550)
     	{
-    		majorRedraw(dc);
-    		lastMajorRedrawTime = Time.now().value();
+    		majorRedraw(dc, true);
     	
 	// debug update	
-		//    	var currentTime = System.getClockTime();
-		//		dc.setColor(TimeColorMain, BackgroundColor);			
-		//    	var timeStr = Lang.format("$1$:$2$",[currentTime.hour.format("%02d"), currentTime.min.format("%02d")]);
-		//    	var batPos =  converter.convert(270, 60); 
-		//    	dc.drawText(batPos.x, batPos.y, fontBat, timeStr, Graphics.TEXT_JUSTIFY_CENTER);	
+		    	var currentTime = System.getClockTime();
+				dc.setColor(TimeColorMain, BackgroundColor);			
+		    	var timeStr = Lang.format("$1$:$2$",[currentTime.hour.format("%02d"), currentTime.min.format("%02d")]);
+		    	var batPos =  converter.convert(270, 90); 
+		    	dc.drawText(batPos.x, batPos.y, fontBat, timeStr, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);	
 		}
 		
 	 // main time
@@ -95,10 +96,10 @@ private var lastMajorRedrawTime = 0;
 		dc.drawText(datePos.x, datePos.y, fontDate, dateStr, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
     // battary
-    	dc.setColor(BatColor, BackgroundColor);
-    	var batStr =  Lang.format("$1$% ", [System.getSystemStats().battery.format("%03.1f")]);
-    	var batPos =  converter.convert(270, 91); 
-		dc.drawText(batPos.x, batPos.y, fontBat, batStr, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+//    	dc.setColor(BatColor, BackgroundColor);
+//    	var batStr =  Lang.format("$1$% ", [System.getSystemStats().battery.format("%03.1f")]);
+//    	var batPos =  converter.convert(270, 90); 
+//		dc.drawText(batPos.x, batPos.y, fontBat, batStr, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     	
     
 //        dc.setColor(Graphics.COLOR_YELLOW, BackgroundColor);
@@ -109,7 +110,7 @@ private var lastMajorRedrawTime = 0;
 //		dc.drawArc(centerX, centerY, centerX - 5, Graphics.ARC_CLOCKWISE, 271, 269);
     }
 
-	function majorRedraw(dc)
+	function majorRedraw(dc, isExtended)
 	{
 		dc.setColor(BackgroundColor, BackgroundColor);
 		dc.clear();
@@ -118,7 +119,10 @@ private var lastMajorRedrawTime = 0;
 		image.draw(dc);
     
     	drawDailyMarks(dc);
-		drawDailyLight(dc, sunTimes.requestData(false));
+		drawDailyLight(dc, sunTimes.requestData(isExtended), isExtended);
+		
+	// ceche
+		lastMajorRedrawTime = Time.now().value();
 	}
 	
 	function timeToDegree(time) 
@@ -127,7 +131,7 @@ private var lastMajorRedrawTime = 0;
 		return 360 - (degree % 360);
 	}
 	
-    function drawDailyLight(dc, times) 
+    function drawDailyLight(dc, times, reqExtended) 
     {
     // up - 12 // 90
     // down - 24 // 270
@@ -137,12 +141,42 @@ private var lastMajorRedrawTime = 0;
     	{
     		return;
 		}
-    		
+
+		dc.setPenWidth(6);
+
+		var maxSunriseDegree = null;
+		var maxSunsetDegree = null;
+		
+		if (reqExtended && times.isExpanded)
+		{
+			if (times.sunriseDusk != null && times.sunsetDusk != null)
+			{
+				maxSunriseDegree = timeToDegree(times.sunriseDusk);
+    			maxSunsetDegree = timeToDegree(times.sunsetDusk);
+    			dc.setColor(DailyLightColorDusk, BackgroundColor);
+    			dc.drawArc(centerX, centerY, centerX - 2, Graphics.ARC_CLOCKWISE, maxSunriseDegree, maxSunsetDegree);
+			}
+			
+			if (times.sunriseLiteDusk != null && times.sunsetLiteDusk != null)
+			{
+				var sunriseDegree = timeToDegree(times.sunriseLiteDusk);
+    			var sunsetDegree = timeToDegree(times.sunsetLiteDusk);
+    			dc.setColor(DailyLightColorDuskLite, BackgroundColor);
+    			dc.drawArc(centerX, centerY, centerX - 2, Graphics.ARC_CLOCKWISE, sunriseDegree, sunsetDegree);
+			}
+		}
+		
     	var sunriseDegree = timeToDegree(times.sunrise);
     	var sunsetDegree = timeToDegree(times.sunset);
-    	
+    		
+		if (maxSunriseDegree == null || maxSunsetDegree == null)
+		{
+			maxSunriseDegree = sunriseDegree;
+			maxSunsetDegree = sunsetDegree;
+		}
+		
     	dc.setColor(DailyLightColor, BackgroundColor);
-    	dc.setPenWidth(6);
+
     	dc.drawArc(centerX, centerY, centerX - 2, Graphics.ARC_CLOCKWISE, sunriseDegree, sunsetDegree);
     	    	
     	// draw current time
@@ -166,7 +200,7 @@ private var lastMajorRedrawTime = 0;
 					[posIntCenterL.x.toNumber(), posIntCenterL.y.toNumber()]];
 		dc.fillPolygon(arr);
     	
-    	if(currentTimeDegree < sunriseDegree + 5 && currentTimeDegree > sunsetDegree - 5)
+    	if(currentTimeDegree < maxSunriseDegree + 5 && currentTimeDegree > maxSunsetDegree - 5)//TODO; change to times compare
     	{
     		dc.setColor(BackgroundColor, BackgroundColor);
     		dc.setPenWidth(2);
@@ -228,9 +262,15 @@ private var lastMajorRedrawTime = 0;
     function onHide() {    }
 
     // The user has just looked at their watch. Timers and animations may be started here.
-    function onExitSleep() {    }
+    function onExitSleep() 
+    {
+    	 //majorRedraw(dc, true);
+    }
 
     // Terminate any active timers and prepare for slow updates.
-    function onEnterSleep() {    }
+    function onEnterSleep() 
+    {
+    	// majorRedraw(dc, false);
+    }
 
 }

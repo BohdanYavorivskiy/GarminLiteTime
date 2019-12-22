@@ -9,15 +9,27 @@ class SunTimesData
 	
 	var isExpanded = false;
 	
-	// TODO: add support detailed info
-	// make as Time
+	var sunriseLiteDusk = null; 	
+	var sunsetLiteDusk = null; 	
+	var sunriseDusk = null;	
+	var sunsetDusk = null;		
 }
 
 class SunTimesEngine
 {
     const D2R = Math.PI / 180.0d;
     const R2D = 180.0d / Math.PI;	
-
+	const OfficialZenith = 90.83333333333333; 
+	const LiteDuskZenith = 96.0; 
+	const DuskZenith = 102.0; 
+	
+function toClockTime(value) // convert value from computeSunriset to ClockTime
+{
+	var clockTime = System.getClockTime();
+	clockTime.hour = value.toNumber() % 24;
+	clockTime.min = ((value - clockTime.hour) * 60) + 0.5;
+	return clockTime;
+}
 	
 function calcTimes(location, reqExpandedData) 
 {
@@ -36,27 +48,51 @@ function calcTimes(location, reqExpandedData)
 	var now = dayInYear(timeInfo.day, timeInfo.month);
 	
 	// for adjust to timezone + dst when active
-	var offset = new Time.Duration(utcOffset).value() / 3600;
-	var sunriseT = computeSunriset(now, lonW, latN, true) + offset;
-	var sunsetT = computeSunriset(now, lonW, latN, false) + offset;
-	// add handle reqExpandedData
-		
+
+	var sunriseT = computeSunriset(now, lonW, latN, true, OfficialZenith);
+	var sunsetT = computeSunriset(now, lonW, latN, false, OfficialZenith);
+	
 	// if newer sunset / sunrise
 	if (sunriseT == null || sunsetT == null)
 	{
 	  	return new SunTimesData();
 	}
 	
+	var offset = new Time.Duration(utcOffset).value() / 3600;
 	var data = new SunTimesData();
-		
-	data.sunrise = System.getClockTime();
-	data.sunset = System.getClockTime();
+	data.sunrise = toClockTime(sunriseT + offset);
+	data.sunset = toClockTime(sunsetT + offset);
 	
-	data.sunrise.hour = sunriseT.toNumber() % 24;
-	data.sunrise.min = ((sunriseT - data.sunrise.hour) * 60) + 0.5;
-	data.sunset.hour = sunsetT.toNumber() % 24;
-	data.sunset.min = ((sunsetT - data.sunset.hour) * 60) + 0.5;
-
+	// handle reqExpandedData
+	if (reqExpandedData)
+	{	
+		data.isExpanded = true;
+		
+		var duskTimes = computeSunriset(now, lonW, latN, false, LiteDuskZenith);
+		if (duskTimes != null)
+		{
+			data.sunsetLiteDusk = toClockTime(duskTimes + offset);
+		}
+		
+		duskTimes = computeSunriset(now, lonW, latN, true, LiteDuskZenith);
+		if (duskTimes != null)
+		{
+			data.sunriseLiteDusk = toClockTime(duskTimes + offset); 	
+		}
+		
+		duskTimes = computeSunriset(now, lonW, latN, false, DuskZenith);
+		if (duskTimes != null)
+		{
+			data.sunsetDusk = toClockTime(duskTimes + offset); 	
+		}
+		
+		duskTimes = computeSunriset(now, lonW, latN, true, DuskZenith);
+		if (duskTimes != null)
+		{
+			data.sunriseDusk = toClockTime(duskTimes + offset); 	
+		}
+	}
+	
 	return data;
 }
 
@@ -68,9 +104,8 @@ function dayInYear(day, month)
     //Sys.println("dayOfYear: " + dayOfYear.format("%d"));
 }
 
-function computeSunriset (day, longitude, latitude, sunrise){
-    var zenith = 90.83333333333333; // official
-
+function computeSunriset (day, longitude, latitude, sunrise, zenith)
+{
     // convert the longitude to hour value and calculate an approximate time
     var lnHour = longitude / 15;
     var t;
